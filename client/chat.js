@@ -3,10 +3,6 @@ import { View, Text, AsyncStorage, StyleSheet } from 'react-native';
 import SocketIOClient from 'socket.io-client';
 import { GiftedChat, Bubble } from 'react-native-gifted-chat';
 
-const USER_ID = '@userId';
-const SERVER_IP = `10.0.0.19`;
-
-
 
 const styles = StyleSheet.create({
   nameTag: {
@@ -24,44 +20,26 @@ export default class Chat extends React.Component {
     super(props);
     this.state = {
       messages: [],
-      userId: null
+      user: this.props.navigation.state.params.user
     };
 
-    this.determineUser = this.determineUser.bind(this);
+    // this.determineUser = this.determineUser.bind(this);
     this.onReceivedMessage = this.onReceivedMessage.bind(this);
     this.onSend = this.onSend.bind(this);
     this.renderBubble = this.renderBubble.bind(this);
     this._storeMessages = this._storeMessages.bind(this);
 
     // replace the ip with your servers local ip
-    this.socket = SocketIOClient(`http://${SERVER_IP}:3030`);
-    this.socket.on('message', this.onReceivedMessage);
-    this.determineUser();
+    this.socket = this.props.navigation.state.params.socket;
+    this.socket.on('add-message', (message) => this.onReceivedMessage(message));
+    // this.determineUser();
+  }
+  componentWillMount() {
+    this.socket.emit("add-user", {"netid": this.state.user.netid});
+    // this.socket.on('fetch-chats', (chats) => {};
   }
 
-  /**
-   * When a user joins the chatroom, check if they are an existing user.
-   * If they aren't, then ask the server for a userId.
-   * Set the userId to the component's state.
-   */
-  determineUser() {
-    this.socket.emit('defChatId', this.props.navigation.state.params.chat.id)
-    AsyncStorage.getItem(USER_ID)
-      .then((userId) => {
-        // If there isn't a stored userId, then fetch one from the server.
-        if (!userId) {
-          this.socket.emit('userJoined', null);
-          this.socket.on('userJoined', (userId) => {
-            AsyncStorage.setItem(USER_ID, userId);
-            this.setState({ userId });
-          });
-        } else {
-          this.socket.emit('userJoined', userId);
-          this.setState({ userId });
-        }
-      })
-      .catch((e) => alert(e));
-  }
+
   // defines the bubble
   renderBubble(props) {
 
@@ -73,7 +51,7 @@ export default class Chat extends React.Component {
         showUsername = false;
       }
     }
-    if (currentMessage.user._id == this.state.userId){
+    if (currentMessage.user._id == this.state.user.netid){
        showUsername = false;
     }
       
@@ -100,16 +78,12 @@ export default class Chat extends React.Component {
   /**
    * When the server sends a message to this.
    */
-  onReceivedMessage(inMessages) {
-    // console.warn(messages);
-    let outMessages = []
-    inMessages.forEach((message) => {
-      if (message.chatId == this.props.navigation.state.params.chat.id){
-        outMessages.push(message);
-      }
-    });
+  onReceivedMessage(messages) {
 
-    this._storeMessages(outMessages);
+    // console.warn('recived message:')
+    // console.warn(messages);
+
+    this._storeMessages(messages);
   }
 
   /**
@@ -117,16 +91,19 @@ export default class Chat extends React.Component {
    * and store it in this component's state.
    */
   onSend(messages=[]) {
-    // console.warn(this.props.navigation.state.params.user);
-    messages[0].user.name = this.props.navigation.state.params.user.username;
-    this.socket.emit('defChatId', this.props.navigation.state.params.chat.id)
-    // console.warn(this.props)
-    this.socket.emit('message', messages[0]);
+    // console.warn(messages[0]);
+    messages[0].sender = this.props.navigation.state.params.user.netid;
+    messages[0].destinations = this.props.navigation.state.params.chat.participants;
+    // console.warn("destination: " + this.props.navigation.state.params.chat.participants);
+    this.socket.emit('private-message', messages[0], this.props.navigation.state.params.user);
     this._storeMessages(messages);
   }
-
+  
   render() {
-    let user = { _id: this.state.userId || -1 };
+    let user = { 
+      _id: this.state.user.netid || -1,
+       name: this.state.user.username || `${this.state.user.firstName} ${this.state.user.lastName}`
+      };
 
     return (
       <GiftedChat
