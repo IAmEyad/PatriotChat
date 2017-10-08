@@ -54,7 +54,7 @@ export default class Chat extends React.Component {
     if (currentMessage.user._id == this.state.user.netid){
        showUsername = false;
     }
-      
+
     return (
       <View>
        {showUsername > 0 && <Text style={styles.nameTag}>{currentMessage.user.name}</Text>}
@@ -98,9 +98,9 @@ export default class Chat extends React.Component {
     this.socket.emit('private-message', messages[0], this.props.navigation.state.params.user);
     this._storeMessages(messages);
   }
-  
+
   render() {
-    let user = { 
+    let user = {
       _id: this.state.user.netid || -1,
        name: this.state.user.username || `${this.state.user.firstName} ${this.state.user.lastName}`
       };
