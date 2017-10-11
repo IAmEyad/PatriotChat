@@ -10,7 +10,7 @@
 		"server": "cd server && node server.js"
 	},
 	"dependencies": {
-		"express": "^4.16.1",
+		"express": "^4.16.2",
 		"http": "^0.0.0",
 		"react": "16.0.0-alpha.12",
 		"react-native": "0.46.4",
